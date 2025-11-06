@@ -1,8 +1,8 @@
 """
-MongoDB writer helper
+MongoDB writer helper functions.
 
-Provides MongoWriter which manages connection, retries, inserts and cleanup.
-This module expects MONGO_ATLAS_URI to be provided via environment or a .env file.
+Provides functional helpers to manage MongoDB connections, retries, document inserts, and cleanup.
+Expects MONGO_ATLAS_URI to be provided via environment or a .env file.
 """
 import os
 import time
