@@ -36,18 +36,20 @@ if total_docs > 0:
     first_doc = collection.find_one(sort=[('inserted_at', 1)])
     last_doc = collection.find_one(sort=[('inserted_at', -1)])
     
-    print(f"First document inserted: {first_doc['inserted_at']}")
-    print(f"Last document inserted: {last_doc['inserted_at']}")
+    print(f"First document inserted: {first_doc.get('inserted_at', 'N/A')}")
+    print(f"Last document inserted: {last_doc.get('inserted_at', 'N/A')}")
     print()
     
     # Show 3 sample documents
     print("Sample Documents (latest 3):")
     print("-" * 60)
     for i, doc in enumerate(collection.find().sort('inserted_at', -1).limit(3), 1):
-        print(f"\n[{i}] Document ID: {doc['_id']}")
-        print(f"    Kafka Offset: {doc['kafka_metadata']['offset']}")
-        print(f"    Data: {doc['data']}")
-        print(f"    Inserted: {doc['inserted_at']}")
+        print(f"\n[{i}] Document ID: {doc.get('_id', 'N/A')}")
+        kafka_metadata = doc.get('kafka_metadata', {})
+        offset = kafka_metadata.get('offset', 'N/A') if isinstance(kafka_metadata, dict) else 'N/A'
+        print(f"    Kafka Offset: {offset}")
+        print(f"    Data: {doc.get('data', 'N/A')}")
+        print(f"    Inserted: {doc.get('inserted_at', 'N/A')}")
 else:
     print("No documents found yet. Make sure the consumer is running!")
 
