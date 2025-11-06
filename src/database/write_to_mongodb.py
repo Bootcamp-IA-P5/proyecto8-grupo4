@@ -44,7 +44,7 @@ def connect_to_mongodb(database: str = 'kafka_data', collection_name: str = 'pro
 
 
 def insert_document(collection, document: dict):
-    """Insert a single document into the provided collection and return InsertOneResult."""
+    """Insert a single document into the provided collection."""
     if collection is None:
         raise RuntimeError("No collection provided to insert_document")
     collection.insert_one(document)
