@@ -20,37 +20,38 @@ print("Connecting to MongoDB Atlas...\n")
 client = MongoClient(MONGO_URI)
 db = client['kafka_data']
 collection = db['probando_messages']
+try:
+    db = client['kafka_data']
+    collection = db['probando_messages']
 
-# Get statistics
-total_docs = collection.count_documents({})
-print("=" * 60)
-print("MongoDB Statistics")
-print("=" * 60)
-print(f"Database: kafka_data")
-print(f"Collection: probando_messages")
-print(f"Total documents: {total_docs:,}")
-print()
-
-if total_docs > 0:
-    # Get first and last document
-    first_doc = collection.find_one(sort=[('inserted_at', 1)])
-    last_doc = collection.find_one(sort=[('inserted_at', -1)])
-    
-    print(f"First document inserted: {first_doc.get('inserted_at', 'N/A')}")
-    print(f"Last document inserted: {last_doc.get('inserted_at', 'N/A')}")
+    # Get statistics
+    total_docs = collection.count_documents({})
+    print("=" * 60)
+    print("MongoDB Statistics")
+    print("=" * 60)
+    print(f"Database: kafka_data")
+    print(f"Collection: probando_messages")
+    print(f"Total documents: {total_docs:,}")
     print()
-    
-    # Show 3 sample documents
-    print("Sample Documents (latest 3):")
-    print("-" * 60)
-    for i, doc in enumerate(collection.find().sort('inserted_at', -1).limit(3), 1):
-        print(f"\n[{i}] Document ID: {doc.get('_id', 'N/A')}")
-        kafka_metadata = doc.get('kafka_metadata', {})
-        offset = kafka_metadata.get('offset', 'N/A') if isinstance(kafka_metadata, dict) else 'N/A'
-        print(f"    Kafka Offset: {offset}")
-        print(f"    Data: {doc.get('data', 'N/A')}")
-        print(f"    Inserted: {doc.get('inserted_at', 'N/A')}")
-else:
-    print("No documents found yet. Make sure the consumer is running!")
 
-client.close()
+    if total_docs > 0:
+        # Get first and last document
+        first_doc = collection.find_one(sort=[('inserted_at', 1)])
+        last_doc = collection.find_one(sort=[('inserted_at', -1)])
+        
+        print(f"First document inserted: {first_doc['inserted_at']}")
+        print(f"Last document inserted: {last_doc['inserted_at']}")
+        print()
+        
+        # Show 3 sample documents
+        print("Sample Documents (latest 3):")
+        print("-" * 60)
+        for i, doc in enumerate(collection.find().sort('inserted_at', -1).limit(3), 1):
+            print(f"\n[{i}] Document ID: {doc['_id']}")
+            print(f"    Kafka Offset: {doc['kafka_metadata']['offset']}")
+            print(f"    Data: {doc['data']}")
+            print(f"    Inserted: {doc['inserted_at']}")
+    else:
+        print("No documents found yet. Make sure the consumer is running!")
+finally:
+    client.close()
