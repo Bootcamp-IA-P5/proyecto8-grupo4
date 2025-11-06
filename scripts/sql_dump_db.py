@@ -5,7 +5,7 @@ and exports the final result into a CSV file named 'person_dataset.csv'.
 """
 import pandas as pd
 from sqlalchemy import select
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import aliased
 from src.database.models.sql import Address, Bank, Person, PersonAddress, Work
 from src.database.sql_alchemy import connect
 
