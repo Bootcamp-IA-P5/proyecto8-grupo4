@@ -6,7 +6,6 @@ Expects MONGO_ATLAS_URI to be provided via environment or a .env file.
 """
 import os
 import time
-from datetime import datetime
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
