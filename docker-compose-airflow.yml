@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    container_name: airflow-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  airflow-webserver:
+    image: apache/airflow:3.0.0
+    container_name: airflow-webserver
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      # Airflow admin credentials from .env
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USERNAME:-admin}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+      # Environment variables for your project
+      MONGO_ATLAS_URI: ${MONGO_ATLAS_URI}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./.env:/opt/airflow/.env
+    ports:
+      - "8080:8080"
+    command: >
+      bash -c "pip install python-dotenv pymongo &&
+               airflow db migrate &&
+               airflow standalone"
+
+  airflow-scheduler:
+    image: apache/airflow:3.0.0
+    container_name: airflow-scheduler
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      # Environment variables for your project
+      MONGO_ATLAS_URI: ${MONGO_ATLAS_URI}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./.env:/opt/airflow/.env
+    command: >
+      bash -c "pip install python-dotenv pymongo &&
+               airflow scheduler"
+
+volumes:
+  postgres-db-volume:

@@ -34,6 +34,11 @@ To get the development environment up and running, follow these steps. For more 
 
 ```
 proyecto9-grupo4/
+├── airflow/                       # Apache Airflow for pipeline orchestration
+│   ├── dags/
+│   │   └── kafka_mongodb_observer.py  # DAG for monitoring Kafka→MongoDB pipeline
+│   ├── README.md                  # Airflow setup and usage guide
+│   └── setup_airflow.sh          # Installation script
 ├── src/
 │   ├── core/
 │   │   ├── kafka_consumer.py      # 1. (tentative) Reads from Kafka and writes to MongoDB (Collection A)
@@ -74,17 +79,46 @@ This section describes how to run the various scripts provided in the project.
 
 ### Running Scripts
 
-1. Load data into PostgreSQL
+1. **Read from Kafka and write to MongoDB**
 ```sh
-    python -m scripts.sql_load_db [-h|--file FILE]
+python -m scripts.read_from_kafka
 ```
 
-2. Clean the PostgreSQL database
+2. **Monitor pipeline with Airflow** (see [`airflow/README.md`](airflow/README.md) for setup)
 ```sh
-    python -m scripts.sql_clean_db [-h|-f|--force]
+# Terminal 1 - Start scheduler
+export AIRFLOW_HOME="$(pwd)/airflow"
+airflow scheduler
+
+# Terminal 2 - Start webserver
+export AIRFLOW_HOME="$(pwd)/airflow"
+airflow webserver --port 8080
+
+# Access UI: http://localhost:8080 (admin/admin)
 ```
 
-3. Dump PostgreSQL database into a csv file
+3. Load data into PostgreSQL
 ```sh
-    python -m scripts.dump_db [-h|[-o|--output] OUTPUT]
+python -m scripts.sql_load_db [-h|--file FILE]
 ```
+
+4. Clean the PostgreSQL database
+```sh
+python -m scripts.sql_clean_db [-h|-f|--force]
+```
+
+5. Dump PostgreSQL database into a csv file
+```sh
+python -m scripts.dump_db [-h|[-o|--output] OUTPUT]
+```
+
+## 📊 Observability with Apache Airflow
+
+This project includes Apache Airflow for pipeline monitoring and orchestration. The DAG `kafka_mongodb_health_monitor` provides:
+
+- **Real-time health checks**: MongoDB connectivity and data freshness
+- **Metrics tracking**: Insertion rate, document count, pipeline status
+- **Visual monitoring**: Graph view of pipeline dependencies
+- **Alerting**: Detect stale data or pipeline failures
+
+For complete setup instructions, see [`airflow/README.md`](airflow/README.md).
