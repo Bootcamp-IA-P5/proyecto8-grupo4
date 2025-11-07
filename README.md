@@ -8,9 +8,7 @@ The primary goal of this project is to implement a robust and scalable data pipe
 
 This project serves as a practical example of building an ETL (Extract, Transform, Load) process suitable for modern data engineering challenges, all within a containerized development environment.
 
-The project management board can be found [here].
-
-[here]: (https://github.com/orgs/Bootcamp-IA-P5/projects/16)
+The project management board can be found [here](https://github.com/orgs/Bootcamp-IA-P5/projects/16).
 
 # Getting Started
 
@@ -88,5 +86,5 @@ This section describes how to run the various scripts provided in the project.
 
 3. Dump PostgreSQL database into a csv file
 ```sh
-    python -m scripts.dump_db [-h|-o OUTPUT|--output OUTPUT]
+    python -m scripts.dump_db [-h|[-o|--output] OUTPUT]
 ```
