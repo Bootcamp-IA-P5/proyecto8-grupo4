@@ -103,12 +103,18 @@ def process_messages(consumer, collection):
                 continue
 
             # Add metadata to the document
+            # Safely extract timestamp from msg
+            kafka_timestamp = None
+            ts = msg.timestamp()
+            if ts is not None and isinstance(ts, tuple) and len(ts) == 2 and ts[1] != -1:
+                kafka_timestamp = ts[1]
+
             document_with_metadata = {
                 'kafka_metadata': {
                     'topic': msg.topic(),
                     'partition': msg.partition(),
                     'offset': msg.offset(),
-                    'timestamp': msg.timestamp()[1],  # [0] is type, [1] is timestamp value
+                    'timestamp': kafka_timestamp,  # None if unavailable
                     'key': msg.key().decode('utf-8') if msg.key() else None
                 },
                 'data': document,
