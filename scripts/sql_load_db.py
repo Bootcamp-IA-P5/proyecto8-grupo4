@@ -1,33 +1,67 @@
 import json
 import os
+import argparse
+from sqlalchemy.exc import SQLAlchemyError
+
 from src.database.sql_alchemy import connect, read_from_mongo
 
-# Define the path to the JSON file containing the fake test data.
-# This data is used solely for testing purposes and simulates records
-# that would typically come from an external source like MongoDB.
-TEST_DATA_FILE = os.path.join(os.path.dirname(__file__), '..', 'tests', 'data', 'test_data.json')
+def load_json_data(file_path):
+    """
+    Loads JSON data from the specified file path.
+    
+    Args:
+        file_path (str): The path to the JSON file.
+        
+    Returns:
+        dict: The loaded JSON data, or None if an error occurs.
+    """
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"❌ Error: Data file not found at {file_path}")
+    except json.JSONDecodeError:
+        print(f"❌ Error: Could not decode JSON from {file_path}. Check file format.")
+    return None
 
-# Load the JSON data from the external file.
-try:
-    with open(TEST_DATA_FILE, 'r') as f:
-        json_data = json.load(f)
-except FileNotFoundError:
-    print(f"❌ Error: Test data file not found at {TEST_DATA_FILE}")
-    exit(1)
-except json.JSONDecodeError:
-    print(f"❌ Error: Could not decode JSON from {TEST_DATA_FILE}. Check file format.")
-    exit(1)
+def main(data_file):
+    """
+    Main function to connect to the database, load data from a file,
+    and populate the database tables.
+    
+    Args:
+        data_file (str): Path to the JSON data file to load.
+    """
+    print(f"Attempting to load data from: {data_file}")
+    json_data = load_json_data(data_file)
+    if not json_data:
+        print("Aborting due to file loading error.")
+        return
 
-session = connect()
+    session = connect()
+    if not session:
+        print("❌ Could not establish a database connection. Data loading aborted.")
+        return
 
-if session:
     try:
         read_from_mongo(session, json_data)
-        print(f"✅ Successfully loaded data from {TEST_DATA_FILE} into the database.")
-    except Exception as e:
+        print(f"✅ Successfully loaded data from {data_file} into the database.")
+    except SQLAlchemyError as e:
         session.rollback()
-        print(f"❌ Error loading data into the database: {e}")
+        print(f"❌ A database error occurred: {e}")
+    except KeyError as e:
+        session.rollback()
+        print(f"❌ A key error occurred, check if the JSON data structure is correct: {e}")
     finally:
         session.close()
-else:
-    print("❌ Could not establish a database connection. Data loading aborted.")
+
+if __name__ == "__main__":
+    # This data is used solely for testing purposes and simulates records
+    # that would typically come from an external source like MongoDB.
+    DEFAULT_DATA_FILE = os.path.join(os.path.dirname(__file__), '..', 'tests', 'data', 'test_data.json')
+
+    parser = argparse.ArgumentParser(description="Load test data into the PostgreSQL database.")
+    parser.add_argument('--file', default=DEFAULT_DATA_FILE, help=f"Path to the JSON data file. Defaults to {DEFAULT_DATA_FILE}")
+    args = parser.parse_args()
+
+    main(args.file)

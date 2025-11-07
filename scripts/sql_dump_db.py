@@ -4,87 +4,108 @@ of person information. It joins data from the Person, Bank, Work, and Address ta
 and exports the final result into a CSV file named 'person_dataset.csv'.
 """
 import pandas as pd
+import argparse
 from sqlalchemy import select
 from sqlalchemy.orm import aliased
+from sqlalchemy.exc import SQLAlchemyError
 from src.database.models.sql import Address, Bank, Person, PersonAddress, Work
 from src.database.sql_alchemy import connect
 
-# Establish a connection to the database to get a session object.
-session=connect()
+def create_person_dataset_query():
+    """
+    Constructs and returns a SQLAlchemy query to create a denormalized "flat" dataset
+    of person information by joining multiple tables.
 
-# --- Alias Setup for Self-Referential Joins ---
-# We need to join the Person table to the Address table twice:
-# 1. To get the 'Home' address.
-# 2. To get the 'Work' address.
-# To distinguish between these two joins on the same tables (Address and PersonAddress),
-# we create aliases for them.
-HomeAddress = aliased(Address)
-WorkAddress = aliased(Address)
-HomeAssociation = aliased(PersonAddress)
-WorkAssociation = aliased(PersonAddress)
+    Returns:
+        sqlalchemy.sql.Select: The constructed SELECT statement.
+    """
+    # --- Alias Setup for Self-Referential Joins ---
+    # We need to join to the Address table twice (for 'Home' and 'Work' addresses).
+    # Aliases are used to distinguish between these two joins.
+    HomeAddress = aliased(Address)
+    WorkAddress = aliased(Address)
+    HomeAssociation = aliased(PersonAddress)
+    WorkAssociation = aliased(PersonAddress)
 
-# --- SQLAlchemy Query Construction ---
-# Build a SELECT statement to fetch data from multiple tables.
-# .label() is used to give specific, non-conflicting names to the columns in the result set.
-stmt = select(
-    # Person details
-    Person.passport.label('person_passport'),
-    Person.name.label('person_name'),
-    Person.last_name.label('person_last_name'),
-    Person.sex.label('person_sex'),
-    Person.email.label('person_email'),
-    Person.phone.label('person_phone'),
-    # Home address details from the aliased HomeAddress table
-    HomeAddress.street_name.label('home_street'),
-    HomeAddress.city.label('home_city'),
-    HomeAddress.ip_address.label('home_ip'),
-    # Bank details
-    Bank.iban.label('bank_iban'),
-    Bank.salary.label('bank_salary'),
-    # Work details
-    Work.company.label('work_company'),
-    Work.position.label('work_position'),
-    Work.phone.label('work_phone'),
-    Work.email.label('work_email'),
-    # Work address details from the aliased WorkAddress table
-    WorkAddress.street_name.label('work_street'),
-    WorkAddress.city.label('work_city')
-).join(
-    Bank, Person.id == Bank.person_id
-).join(
-    Work, Person.id == Work.person_id
-).join(
-    # Join for Home Address: Person -> HomeAssociation -> HomeAddress
-    HomeAssociation, Person.id == HomeAssociation.person_id
-).join(
-    HomeAddress, 
-    # This condition ensures we are joining the correct address record (type 'Home')
-    (HomeAssociation.address_id == HomeAddress.id) & (HomeAssociation.type == 'Home')
-).join(
-    # Join for Work Address: Person -> WorkAssociation -> WorkAddress
-    WorkAssociation, Person.id == WorkAssociation.person_id
-).join(
-    WorkAddress, 
-    # This condition ensures we are joining the correct address record (type 'Work')
-    (WorkAssociation.address_id == WorkAddress.id) & (WorkAssociation.type == 'Work')
-)
+    # .label() gives specific, non-conflicting names to the columns in the result set.
+    return select(
+        Person.passport.label('person_passport'),
+        Person.name.label('person_name'),
+        Person.last_name.label('person_last_name'),
+        Person.sex.label('person_sex'),
+        Person.email.label('person_email'),
+        Person.phone.label('person_phone'),
+        HomeAddress.street_name.label('home_street'),
+        HomeAddress.city.label('home_city'),
+        HomeAddress.ip_address.label('home_ip'),
+        Bank.iban.label('bank_iban'),
+        Bank.salary.label('bank_salary'),
+        Work.company.label('work_company'),
+        Work.position.label('work_position'),
+        Work.phone.label('work_phone'),
+        Work.email.label('work_email'),
+        WorkAddress.street_name.label('work_street'),
+        WorkAddress.city.label('work_city')
+    ).join(Bank, Person.id == Bank.person_id) \
+     .join(Work, Person.id == Work.person_id) \
+     .join(HomeAssociation, Person.id == HomeAssociation.person_id) \
+     .join(HomeAddress, (HomeAssociation.address_id == HomeAddress.id) & (HomeAssociation.type == 'Home')) \
+     .join(WorkAssociation, Person.id == WorkAssociation.person_id) \
+     .join(WorkAddress, (WorkAssociation.address_id == WorkAddress.id) & (WorkAssociation.type == 'Work'))
 
-print("Executing query and fetching data...")
+def main(output_file):
+    """
+    Main function to execute the database query and export the results to a CSV file.
+    """
+    session = connect()
+    if not session:
+        print("❌ Could not establish a database connection. Aborting.")
+        return
 
-# Execute the query and fetch all results into a list of Row objects.
-result = session.execute(stmt).all()
+    try:
+        stmt = create_person_dataset_query()
+        print("Executing query and fetching data...")
+        
+        # Execute the query and get a result object
+        cursor_result = session.execute(stmt)
+        result = cursor_result.all()
+        column_names = cursor_result.keys()
 
-# --- DataFrame Creation and CSV Export ---
+        if not result:
+            print("⚠️ Query returned no data. The output file will be empty.")
+        
+        # Create a pandas DataFrame from the query results.
+        df = pd.DataFrame(result, columns=column_names)
 
-# Dynamically get the column names (labels) from the select statement.
-column_names = [col.name if hasattr(col, 'name') else col.key for col in stmt.selected_columns]
-# Create a pandas DataFrame from the query results and the column names.
-df = pd.DataFrame(result, columns=column_names)
+        # Save the DataFrame to a CSV file.
+        df.to_csv(output_file, index=False)
 
-# Define the output filename and save the DataFrame to a CSV file.
-csv_filename = 'person_dataset.csv'
-df.to_csv(csv_filename, index=False)
+        print(f"\n✅ Successfully exported {len(df)} rows to {output_file}")
+        print("--- First 5 Rows of the Dataset ---")
+        print(df.head())
 
-print(f"\n✅ Successfully exported data to {csv_filename}")
-print("--- First 5 Rows of the Dataset ---")
-print(df.head())
+    except SQLAlchemyError as e:
+        print(f"❌ A database error occurred: {e}")
+    except IOError as e:
+        print(f"❌ An error occurred while writing the file: {e}")
+    except Exception as e:
+        print(f"❌ An unexpected error occurred: {e}")
+    finally:
+        print("Closing database session.")
+        session.close()
+
+if __name__ == "__main__":
+    DEFAULT_FILENAME = 'person_dataset.csv'
+    
+    parser = argparse.ArgumentParser(
+        description="Query the PostgreSQL database to create a denormalized 'flat' dataset and export it to a CSV file."
+    )
+    parser.add_argument(
+        '--output',
+        '-o',
+        default=DEFAULT_FILENAME,
+        help=f"Path to the output CSV file. Defaults to '{DEFAULT_FILENAME}' in the current directory."
+    )
+    args = parser.parse_args()
+
+    main(args.output)
