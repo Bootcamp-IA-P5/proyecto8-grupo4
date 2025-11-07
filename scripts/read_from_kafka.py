@@ -6,7 +6,7 @@ from confluent_kafka import Consumer, KafkaError, KafkaException
 import json
 import time
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 import sys
 
@@ -93,7 +93,6 @@ def process_messages(consumer, collection):
             
             # Successfully received a message
             if message_count == 0:
-                print("DEBUG: First message received!")
                 batch_start_time = time.time()  # Start first batch timer
             
             # Deserialize JSON value
@@ -103,8 +102,21 @@ def process_messages(consumer, collection):
                 print(f"⚠ Failed to decode message at offset {msg.offset()}: {e}")
                 continue
 
+            # Add metadata to the document
+            document_with_metadata = {
+                'kafka_metadata': {
+                    'topic': msg.topic(),
+                    'partition': msg.partition(),
+                    'offset': msg.offset(),
+                    'timestamp': msg.timestamp()[1],  # [0] is type, [1] is timestamp value
+                    'key': msg.key().decode('utf-8') if msg.key() else None
+                },
+                'data': document,
+                'inserted_at': datetime.now(timezone.utc)
+            }
+
             # Insert into MongoDB via functional writer
-            insert_document(collection, document)
+            insert_document(collection, document_with_metadata)
             message_count += 1
             
             # Report batch statistics every N messages
