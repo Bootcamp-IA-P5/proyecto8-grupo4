@@ -115,7 +115,7 @@ def process_messages(consumer, collection):
                     'partition': msg.partition(),
                     'offset': msg.offset(),
                     'timestamp': kafka_timestamp,  # None if unavailable
-                    'key': msg.key().decode('utf-8') if msg.key() else None
+                    'key': msg.key().decode('utf-8', errors='replace') if msg.key() else None
                 },
                 'data': document,
                 'inserted_at': datetime.now(timezone.utc)
