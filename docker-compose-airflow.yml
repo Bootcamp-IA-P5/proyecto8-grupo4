@@ -30,8 +30,9 @@ services:
       # Environment variables for your project
       MONGO_ATLAS_URI: ${MONGO_ATLAS_URI}
     volumes:
+      - airflow-data:/opt/airflow
       - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
+      # - ./airflow/logs:/opt/airflow/logs
       - ./.env:/opt/airflow/.env
     ports:
       - "8080:8080"
@@ -52,8 +53,9 @@ services:
       # Environment variables for your project
       MONGO_ATLAS_URI: ${MONGO_ATLAS_URI}
     volumes:
+      - airflow-data:/opt/airflow
       - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
+      # - ./airflow/logs:/opt/airflow/logs
       - ./.env:/opt/airflow/.env
     command: >
       bash -c "pip install python-dotenv pymongo &&
@@ -61,3 +63,4 @@ services:
 
 volumes:
   postgres-db-volume:
+  airflow-data:
