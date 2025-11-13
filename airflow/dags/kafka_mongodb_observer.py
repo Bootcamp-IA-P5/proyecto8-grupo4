@@ -33,7 +33,7 @@ default_args = {
 dag = DAG(
     dag_id='kafka_mongodb_health_monitor',
     default_args=default_args,
-    description='Monitorea salud del pipeline Kafka→MongoDB (solo observación)',
+    description='Monitors the health of the Kafka→MongoDB pipeline (observation only)',
     schedule='*/10 * * * *',  # Every 10 minutes
     start_date=datetime.now() - timedelta(days=1),
     catchup=False,
